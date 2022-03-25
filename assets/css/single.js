@@ -1,66 +1,93 @@
-var issueContainerEl = document.querySelector("#issues-container");
-issueContainerEl.appendChild(issueEl);
+var userFormEl = document.querySelector("#user-form");
+var nameInputEl = document.querySelector("#username");
+var repoContainerEl = document.querySelector("#repos-container");
+var repoSearchTerm = document.querySelector("#repo-search-term");
 
+var formSubmitHandler = function(event) {
+  // prevent page from refreshing
+  event.preventDefault();
 
-var getRepoIssues = function(repo) {
-    console.log(repo);
+  // get value from input element
+  var username = nameInputEl.value.trim();
+
+  if (username) {
+    getUserRepos(username);
+
+    // clear old content
+    repoContainerEl.textContent = "";
+    nameInputEl.value = "";
+  } else {
+    alert("Please enter a GitHub username");
+  }
 };
 
-var getRepoIssues = function(repo) {
-    // format the github api url
-var apiUrl = "https://api.github.com/repos/" + repo + "/issues?direction=asc";
+var getUserRepos = function(user) {
+  // format the github api url
+  var apiUrl = "https://api.github.com/users/" + user + "/repos";
 
-fetch(apiUrl).then(function(response) {
-    // request was successful
-    if (response.ok) {
-      response.json().then(function(data) {
-        // pass response data to dom function
-        displayIssues(data);
-      });
-    }
-    else {
-      alert("There was a problem with your request!");
-    }
-  });
+  // make a get request to url
+  fetch(apiUrl)
+    .then(function(response) {
+      // request was successful
+      if (response.ok) {
+        console.log(response);
+        response.json().then(function(data) {
+          console.log(data);
+          displayRepos(data, user);
+        });
+      } else {
+        alert("Error: " + response.statusText);
+      }
+    })
+    .catch(function(error) {
+      alert("Unable to connect to GitHub");
+    });
+};
 
-  var displayIssues = function(issues) {
-    if (issues.length === 0) {
-        issueContainerEl.textContent = "This repo has no open issues!";
-        return;
-      }  
-  };
-    for (var i = 0; i < issues.length; i++) {
-        // create a link element to take users to the issue on github
-        var issueEl = document.createElement("a");
-        issueEl.classList = "list-item flex-row justify-space-between align-center";
-        issueEl.setAttribute("href", issues[i].html_url);
-        issueEl.setAttribute("target", "_blank");
+var displayRepos = function(repos, searchTerm) {
+  // check if api returned any repos
+  if (repos.length === 0) {
+    repoContainerEl.textContent = "No repositories found.";
+    return;
+  }
 
-    // create span to hold issue title
+  repoSearchTerm.textContent = searchTerm;
+
+  // loop over repos
+  for (var i = 0; i < repos.length; i++) {
+    // format repo name
+    var repoName = repos[i].owner.login + "/" + repos[i].name;
+
+    // create a container for each repo
+    var repoEl = document.createElement("div");
+    repoEl.classList = "list-item flex-row justify-space-between align-center";
+
+    // create a span element to hold repository name
     var titleEl = document.createElement("span");
-    titleEl.textContent = issues[i].title;
+    titleEl.textContent = repoName;
 
     // append to container
-    issueEl.appendChild(titleEl);
+    repoEl.appendChild(titleEl);
 
-    // create a type element
-    var typeEl = document.createElement("span");
+    // create a status element
+    var statusEl = document.createElement("span");
+    statusEl.classList = "flex-row align-center";
 
-    // check if issue is an actual issue or a pull request
-    if (issues[i].pull_request) {
-    typeEl.textContent = "(Pull request)";
+    // check if current repo has issues or not
+    if (repos[i].open_issues_count > 0) {
+      statusEl.innerHTML =
+        "<i class='fas fa-times status-icon icon-danger'></i>" + repos[i].open_issues_count + " issue(s)";
     } else {
-  typeEl.textContent = "(Issue)";
+      statusEl.innerHTML = "<i class='fas fa-check-square status-icon icon-success'></i>";
     }
 
     // append to container
-    issueEl.appendChild(typeEl);
-    This code will create an <a>
+    repoEl.appendChild(statusEl);
 
+    // append container to the dom
+    repoContainerEl.appendChild(repoEl);
+  }
+};
 
-}
-
-
-getRepoIssues("facebook/react");
-
-}
+// add event listeners to forms
+userFormEl.addEventListener("submit", formSubmitHandler);
